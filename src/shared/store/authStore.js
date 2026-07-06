@@ -9,27 +9,27 @@ export const useAuthStore = create(
             token: null,
             user: null,
             isAuthenticated: false,
+            sessionExpired: false,
+
+            setSessionExpired: (value) => set({ sessionExpired: value }),
+            setAccessToken: (token) => set({ token }),
+            setUser: (user) => set({ user }),
 
             login: async (accessToken, user, refreshToken) => {
-                try {
-                    set({
-                        token: accessToken,
-                        user: user,
-                        isAuthenticated: true,
-                        setUser: (userData) => set({ user: userData }),
-                    });
+                set({
+                    token: accessToken,
+                    user,
+                    isAuthenticated: true,
+                    sessionExpired: false,
+                });
 
-                    if (refreshToken) {
-                        if (Platform.OS === "web") {
-                            localStorage.setItem("refreshToken", refreshToken);
-                        } else {
-                            const SecureStore = await import("expo-secure-store");
-                            await SecureStore.setItemAsync("refreshToken", refreshToken);
-                        }
+                if (refreshToken) {
+                    if (Platform.OS === "web") {
+                        localStorage.setItem("refreshToken", refreshToken);
+                    } else {
+                        const SecureStore = await import("expo-secure-store");
+                        await SecureStore.setItemAsync("refreshToken", refreshToken);
                     }
-                    console.log("Store: Login completado con éxito");
-                } catch (error) {
-                    console.error("Store: Error al guardar credenciales:", error);
                 }
             },
 
@@ -38,6 +38,7 @@ export const useAuthStore = create(
                     token: null,
                     user: null,
                     isAuthenticated: false,
+                    sessionExpired: false,
                 });
 
                 if (Platform.OS !== "web") {
@@ -47,7 +48,10 @@ export const useAuthStore = create(
                     localStorage.removeItem("refreshToken");
                 }
             },
+
+            setUser: (user) => set({ user }),
         }),
+
         {
             name: "auth-storage",
             storage: createJSONStorage(() => AsyncStorage),

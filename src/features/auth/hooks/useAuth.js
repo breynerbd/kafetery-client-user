@@ -1,36 +1,41 @@
 import { useState } from "react";
-import authClient from "../../../shared/api/authClient.js";
+import apiClient from "../../../shared/api/apiClient.js";
 import { useAuthStore } from "../../../shared/store/authStore.js";
-import restaurantClient from "../../../shared/api/restaurantClient.js";
+import axios from "axios";
+import { ENDPOINTS } from "../../../shared/constants/endpoints";
 
 export const useAuth = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const login = useAuthStore((state) => state.login);
-    const logout = useAuthStore((state) => state.logout);
+
+    const loginStore = useAuthStore((state) => state.login);
+    const logoutStore = useAuthStore((state) => state.logout);
 
     const handleLogin = async (data) => {
         setLoading(true);
         setError(null);
+
         try {
-            const response = await authClient.post("/login", {
-                Email: data.email,
-                Password: data.password,
-            });
+            const response = await axios.post(
+                `${ENDPOINTS.AUTH}/login`,
+                {
+                    email: data.email,
+                    password: data.password,
+                }
+            );
 
-            const { accessToken, refreshToken } = response.data;
+            console.log("Datos que llegan del login:", response.data.user);
 
-            await login(accessToken, null, refreshToken);
+            const { accessToken, refreshToken, user } = response.data;
 
-            const profileRes = await restaurantClient.get("/users/profile");
+            await loginStore(accessToken, user, refreshToken);
 
-            console.log("DEBUG | Datos del perfil recibidos:", JSON.stringify(profileRes.data.data, null, 2));
-            useAuthStore.getState().setUser(profileRes.data.data);
-
+            await fetchProfileData();
             return true;
         } catch (err) {
-            const message = err.response?.data?.message || err.message;
-            setError(message);
+            console.log("LOGIN ERROR:", err.response?.data || err.message);
+
+            setError(err.response?.data?.message || err.message);
             return false;
         } finally {
             setLoading(false);
@@ -38,20 +43,18 @@ export const useAuth = () => {
     };
 
     const handleRegister = async (data) => {
-        try {
-            setLoading(true);
-            setError(null);
+        setLoading(true);
+        setError(null);
 
-            const payload = {
+        try {
+            const response = await apiClient.post(`${ENDPOINTS.AUTH}/register`, {
                 name: data.name,
                 surname: data.surname,
                 username: data.username,
                 email: data.email,
                 password: data.password,
-                role: "USER",
-            };
-
-            const response = await authClient.post("/register", payload);
+                role: "CLIENT",
+            });
 
             return response.data;
         } catch (err) {
@@ -62,5 +65,21 @@ export const useAuth = () => {
         }
     };
 
-    return { handleLogin, handleRegister, loading, error, logout };
+    return {
+        handleLogin,
+        handleRegister,
+        logout: logoutStore,
+        loading,
+        error,
+    };
+};
+
+const fetchProfileData = async () => {
+    try {
+        const response = await apiClient.get(`${ENDPOINTS.USER}/users/profile`);
+
+        useAuthStore.getState().setUser(response.data.data);
+    } catch (err) {
+        console.error("Error al cargar perfil:", err);
+    }
 };
