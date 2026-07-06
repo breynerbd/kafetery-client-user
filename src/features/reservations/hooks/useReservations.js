@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import reservationClient from "../../../shared/api/reservationClient.js";
+import apiClient from "../../../shared/api/apiClient.js";
 import { useReservationStore } from "../../../shared/store/reservationsStore.js";
 
 export const useReservations = () => {
@@ -8,12 +8,11 @@ export const useReservations = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Obtener todas las reservas del usuario conectado
     const getReservations = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const res = await reservationClient.get("/reservations"); // Ajusta el sub-endpoint si varía
+            const res = await apiClient.get("/reservations");
             setReservations(res.data.data || res.data);
             return res.data.data || res.data;
         } catch (err) {
@@ -24,22 +23,18 @@ export const useReservations = () => {
         }
     }, [setReservations]);
 
-    // Guardar una reserva (Sirve tanto para Crear como para Editar si pasas un ID)
     const saveReservation = useCallback(async (formData, id = null) => {
         try {
             setLoading(true);
             setError(null);
             let res;
-            
+
             if (id) {
-                // Modo Edición
-                res = await reservationClient.put(`/reservations/${id}`, formData);
+                res = await apiClient.put(`/reservations/${id}`, formData);
             } else {
-                // Modo Creación
-                res = await reservationClient.post("/reservations", formData);
+                res = await apiClient.post("/reservations", formData);
             }
-            
-            // Volvemos a pedir la lista actualizada al servidor para mantener consistencia
+
             await getReservations();
             return res.data;
         } catch (err) {
@@ -50,14 +45,12 @@ export const useReservations = () => {
         }
     }, [getReservations]);
 
-    // Eliminar o Cancelar una reserva
     const deleteReservation = useCallback(async (id) => {
         try {
             setLoading(true);
             setError(null);
-            await reservationClient.delete(`/reservations/${id}`);
-            
-            // Refrescar la lista local tras borrar exitosamente
+            await apiClient.delete(`/reservations/${id}`);
+
             await getReservations();
         } catch (err) {
             setError(err.response?.data?.message || "Error al eliminar la reserva");
@@ -67,19 +60,18 @@ export const useReservations = () => {
         }
     }, [getReservations]);
 
-    // Escucha el foco de la pantalla de React Navigation para auto-cargar
     useFocusEffect(
         useCallback(() => {
             getReservations();
         }, [getReservations])
     );
 
-    return { 
-        reservations, 
-        getReservations, 
-        saveReservation, 
-        deleteReservation, 
-        loading, 
-        error 
+    return {
+        reservations,
+        getReservations,
+        saveReservation,
+        deleteReservation,
+        loading,
+        error
     };
 };

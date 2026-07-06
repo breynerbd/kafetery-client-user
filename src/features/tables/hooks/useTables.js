@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import tableClient from "../../../shared/api/tableClient.js"; 
+import { useFocusEffect } from "@react-navigation/native";
+import apiClient from "../../../shared/api/apiClient.js";
 import { useTablesStore } from "../../../shared/store/tablesStore.js";
 
 export const useTables = () => {
@@ -11,10 +12,9 @@ export const useTables = () => {
         try {
             setLoading(true);
             setError(null);
-            
-            const res = await tableClient.get("/tables");
+            const res = await apiClient.get("/tables");
             const data = res.data.data || res.data;
-            
+
             setTables(data);
             return data;
         } catch (err) {
@@ -24,6 +24,12 @@ export const useTables = () => {
             setLoading(false);
         }
     }, [setTables]);
+
+    useFocusEffect(
+        useCallback(() => {
+            getTables();
+        }, [getTables])
+    );
 
     return { tables, getTables, loading, error };
 };

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import restaurantClient from "../../../shared/api/restaurantClient.js";
+import apiClient from "../../../shared/api/apiClient.js";
 import { useRestaurantStore } from "../../../shared/store/restaurantsStore.js";
 
 export const useRestaurants = () => {
@@ -12,7 +12,7 @@ export const useRestaurants = () => {
         try {
             setLoading(true);
             setError(null);
-            const res = await restaurantClient.get("/restaurants");
+            const res = await apiClient.get("/restaurants");
             setRestaurants(res.data.data);
             return res.data.data;
         } catch (err) {

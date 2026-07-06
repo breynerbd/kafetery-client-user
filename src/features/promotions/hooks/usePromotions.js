@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import promotionClient from "../../../shared/api/promotionClient.js";
+import apiClient from "../../../shared/api/apiClient.js";
 import { usePromotionsStore } from "../../../shared/store/promotionsStore.js";
 
 export const usePromotions = () => {
@@ -12,11 +12,10 @@ export const usePromotions = () => {
         try {
             setLoading(true);
             setError(null);
-            
-            const res = await promotionClient.get("/promotions");
-            // Se adapta por si la API responde con la propiedad estructurada u objeto directo
+
+            const res = await apiClient.get("/promotions");
             const data = res.data.data || res.data;
-            
+
             setPromotions(data);
             return data;
         } catch (err) {

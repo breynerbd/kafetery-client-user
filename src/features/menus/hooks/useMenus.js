@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import menuClient from "../../../shared/api/menuClient.js";
+import apiClient from "../../../shared/api/apiClient.js";
 import { useMenuStore } from "../../../shared/store/menuStore.js";
 
 export const useMenus = () => {
@@ -12,9 +12,7 @@ export const useMenus = () => {
         try {
             setLoading(true);
             setError(null);
-            // Hacemos el GET al endpoint de menús del usuario
-            const res = await menuClient.get("/menus");
-            // Adaptamos según responda tu API (ej. res.data.data o directamente res.data)
+            const res = await apiClient.get("/menus");
             const menuData = res.data.data || res.data;
             setMenus(menuData);
             return menuData;
