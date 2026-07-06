@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -10,24 +10,46 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useOrders } from "../hooks/useOrders.js";
+import OrderDetails from "./OrderDetails";
 
 const OrdersScreen = () => {
     const { orders, loading, getOrders } = useOrders();
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
         getOrders();
     }, []);
 
+    const openDetails = (order) => {
+        setSelectedOrder(order);
+        setModalVisible(true);
+    };
+
+    const closeDetails = () => {
+        setModalVisible(false);
+        setSelectedOrder(null);
+    };
+
+    const pendingOrders = orders?.filter(
+        (o) => o.status !== "DELIVERED"
+    );
+
+    const deliveredOrders = orders?.filter(
+        (o) => o.status === "DELIVERED"
+    );
+
+    const [tab, setTab] = useState("PENDING");
+
     const renderItem = ({ item }) => (
         <Pressable
             style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => openDetails(item)}
         >
-            {/* Contenedor Izquierdo - Icono de Recibo */}
             <View style={styles.iconWrap}>
                 <Ionicons name="receipt-outline" size={22} color="#C4622D" />
             </View>
 
-            {/* Cuerpo de la Tarjeta */}
             <View style={styles.cardBody}>
                 <View style={styles.idContainer}>
                     <Text style={styles.idLabel}>ORDER ID</Text>
@@ -39,11 +61,10 @@ const OrdersScreen = () => {
                 <View style={styles.infoItem}>
                     <Ionicons name="restaurant-outline" size={13} color="#8C6B55" />
                     <Text style={styles.infoText} numberOfLines={1}>
-                        Mesa: {item.table || "N/A"}
+                        Mesa: {item.table?.tableNumber || "N/A"}
                     </Text>
                 </View>
 
-                {/* Badge de cantidad de productos */}
                 <View style={styles.badge}>
                     <Ionicons name="fast-food-outline" size={11} color="#EADDCA" />
                     <Text style={styles.badgeText}>
@@ -52,7 +73,6 @@ const OrdersScreen = () => {
                 </View>
             </View>
 
-            {/* Precio Final y Flecha de Navegación Pasiva */}
             <View style={styles.rightActionWrap}>
                 <Text style={styles.priceText}>
                     Q{(item.totalPrice ?? 0).toFixed(2)}
@@ -73,8 +93,32 @@ const OrdersScreen = () => {
 
     return (
         <View style={styles.container}>
+            <View style={styles.topBand}>
+                <Text style={styles.topBandLabel}>HISTORIAL DE CONSUMO</Text>
+                <Text style={styles.topBandTitle}>Mis Órdenes</Text>
+            </View>
+            <Text style={styles.countText}>
+                {orders?.length ?? 0} Órdenes registradas
+            </Text>
+
+            <View style={styles.tabs}>
+                <Pressable
+                    style={[styles.tab, tab === "PENDING" && styles.tabActive]}
+                    onPress={() => setTab("PENDING")}
+                >
+                    <Text style={[styles.tabText, tab === "PENDING" && styles.tabActiveText]}>Pendientes</Text>
+                </Pressable>
+
+                <Pressable
+                    style={[styles.tab, tab === "DELIVERED" && styles.tabActive]}
+                    onPress={() => setTab("DELIVERED")}
+                >
+                    <Text style={[styles.tabText, tab === "DELIVERED" && styles.tabActiveText]}>Entregadas</Text>
+                </Pressable>
+            </View>
+
             <FlatList
-                data={orders}
+                data={tab === "PENDING" ? pendingOrders : deliveredOrders}
                 keyExtractor={(item) => item._id || item.id}
                 renderItem={renderItem}
                 refreshControl={
@@ -86,17 +130,6 @@ const OrdersScreen = () => {
                 }
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
-                ListHeaderComponent={
-                    <View>
-                        <View style={styles.topBand}>
-                            <Text style={styles.topBandLabel}>HISTORIAL DE CONSUMO</Text>
-                            <Text style={styles.topBandTitle}>Mis Órdenes</Text>
-                        </View>
-                        <Text style={styles.countText}>
-                            {orders?.length ?? 0} Órdenes registradas
-                        </Text>
-                    </View>
-                }
                 ListEmptyComponent={
                     <View style={styles.emptyWrap}>
                         <Ionicons name="receipt-outline" size={48} color="#C4B5A8" />
@@ -106,6 +139,12 @@ const OrdersScreen = () => {
                         </Text>
                     </View>
                 }
+            />
+
+            <OrderDetails
+                visible={modalVisible}
+                order={selectedOrder}
+                onClose={closeDetails}
             />
         </View>
     );
@@ -136,8 +175,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 56,
         paddingBottom: 28,
-        marginHorizontal: -16,
-        marginBottom: 20,
     },
     topBandLabel: {
         fontSize: 10,
@@ -158,12 +195,13 @@ const styles = StyleSheet.create({
         fontWeight: "500",
         textTransform: "uppercase",
         letterSpacing: 0.6,
+        marginTop: 12,
         marginBottom: 10,
-        paddingHorizontal: 4,
+        paddingHorizontal: 20,
     },
     listContent: {
         paddingHorizontal: 16,
-        paddingBottom: 30,
+        paddingBottom: 70,
     },
     card: {
         flexDirection: "row",
@@ -261,5 +299,33 @@ const styles = StyleSheet.create({
         color: "#8C6B55",
         textAlign: "center",
         paddingHorizontal: 20,
+    },
+    tabs: {
+        flexDirection: "row",
+        paddingHorizontal: 36,
+        marginTop: 2,
+        marginBottom: 12,
+        gap: 10,
+    },
+
+    tab: {
+        flex: 1,
+        paddingVertical: 8,
+        borderRadius: 12,
+        backgroundColor: "#E8DDD4",
+        alignItems: "center",
+    },
+
+    tabActive: {
+        backgroundColor: "#4A3728",
+    },
+
+    tabText: {
+        fontWeight: "700",
+        color: "#4A3728",
+    },
+
+    tabActiveText: {
+        color: "#FFFFFF",
     },
 });

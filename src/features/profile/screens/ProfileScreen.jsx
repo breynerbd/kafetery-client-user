@@ -8,9 +8,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../../shared/store/authStore";
+import { useNavigation } from "@react-navigation/native";
 
 const ProfileScreen = () => {
     const { user, logout } = useAuthStore();
+    const navigation = useNavigation();
 
     return (
         <ScrollView
@@ -26,7 +28,8 @@ const ProfileScreen = () => {
                         <Ionicons name="person" size={48} color="#C4622D" />
                     </View>
                 </View>
-                <Text style={styles.userName}>{user?.name || "Sin nombre"}</Text>
+                <Text style={styles.userName}>{user?.name || "Sin nombre"} {user?.surname || "Sin apellido"}</Text>
+                <Text style={styles.userUsername}>@{user?.username || "Sin usuario"}</Text>
                 <Text style={styles.userEmail}>{user?.email || "Sin correo"}</Text>
 
                 <View style={styles.badge}>
@@ -37,20 +40,20 @@ const ProfileScreen = () => {
 
             <View style={styles.statsCard}>
                 <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>{user?.points ?? 0}</Text>
+                    <Text style={styles.statNumber}>{user?.loyaltyPoints ?? 0}</Text>
                     <Text style={styles.statLabel}>Puntos</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                     <Text style={styles.statNumber}>
-                        {Math.floor((user?.points ?? 0) / 100)}
+                        {user?.totalOrders ?? 0}
                     </Text>
-                    <Text style={styles.statLabel}>Canjes</Text>
+                    <Text style={styles.statLabel}>Ordenes Fin.</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                     <Text style={styles.statNumber}>
-                        {user?.points >= 500 ? "Oro" : user?.points >= 200 ? "Plata" : "Base"}
+                        {user?.loyaltyPoints >= 500 ? "Oro" : user?.loyaltyPoints >= 200 ? "Plata" : "Base"}
                     </Text>
                     <Text style={styles.statLabel}>Nivel</Text>
                 </View>
@@ -58,7 +61,16 @@ const ProfileScreen = () => {
 
             <View style={styles.menuCard}>
                 {[
-                    { icon: "receipt-outline", label: "Mis pedidos" },
+                    {
+                        icon: "receipt-outline",
+                        label: "Mis pedidos",
+                        screen: "Pedidos",
+                    },
+                    {
+                        icon: "card-outline",
+                        label: "Mis tarjetas",
+                        screen: "PaymentMethods",
+                    },
                 ].map((item, i, arr) => (
                     <Pressable
                         key={item.label}
@@ -67,12 +79,25 @@ const ProfileScreen = () => {
                             pressed && styles.menuItemPressed,
                             i === arr.length - 1 && styles.menuItemLast,
                         ]}
+                        onPress={() => navigation.navigate(item.screen)}
                     >
                         <View style={styles.menuIconWrap}>
-                            <Ionicons name={item.icon} size={20} color="#C4622D" />
+                            <Ionicons
+                                name={item.icon}
+                                size={20}
+                                color="#C4622D"
+                            />
                         </View>
-                        <Text style={styles.menuLabel}>{item.label}</Text>
-                        <Ionicons name="chevron-forward" size={16} color="#C4B5A8" />
+
+                        <Text style={styles.menuLabel}>
+                            {item.label}
+                        </Text>
+
+                        <Ionicons
+                            name="chevron-forward"
+                            size={16}
+                            color="#C4B5A8"
+                        />
                     </Pressable>
                 ))}
             </View>
@@ -157,6 +182,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#8C6B55",
         marginBottom: 14,
+    },
+    userUsername: {
+        fontSize: 14,
+        color: "#8C6B55",
+        marginBottom: 12,
     },
     badge: {
         flexDirection: "row",
