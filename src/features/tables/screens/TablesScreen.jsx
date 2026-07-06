@@ -29,7 +29,7 @@ const TablesScreen = () => {
 
             <View style={styles.cardBody}>
                 <Text style={styles.cardTitle}>Mesa Disponible</Text>
-                
+
                 <View style={styles.infoItem}>
                     <Ionicons name="people-outline" size={14} color="#8B4513" />
                     <Text style={styles.infoText}>
@@ -38,10 +38,13 @@ const TablesScreen = () => {
                 </View>
 
                 <View style={styles.infoItem}>
-                    <Ionicons name="key-outline" size={12} color="#D2B48C" />
-                    <Text style={styles.infoCode} numberOfLines={1}>
-                        Ref: {item._id || item.id}
-                    </Text>
+                    <Ionicons name="calendar-outline" size={12} color="#D2B48C" />
+                    <Text style={styles.infoText}>{item.status}</Text>
+                </View>
+
+                <View style={styles.infoItem}>
+                    <Ionicons name="storefront-outline" size={12} color="#D2B48C" />
+                    <Text style={styles.infoText}>{item.restaurant?.name}</Text>
                 </View>
             </View>
 
@@ -71,7 +74,9 @@ const TablesScreen = () => {
                         colors={["#C4622D"]}
                     />
                 }
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={{
+                    paddingBottom: 70
+                }}
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={
                     <View>

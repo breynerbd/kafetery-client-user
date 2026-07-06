@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -10,24 +10,36 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { usePromotions } from "../hooks/usePromotions.js";
+import PromotionDetails from "./PromotionDetails";
 
 const PromotionsScreen = () => {
     const { promotions, loading, getPromotions } = usePromotions();
+    const [selectedPromotion, setSelectedPromotion] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
         getPromotions();
     }, []);
 
+    const openDetails = (promotion) => {
+        setSelectedPromotion(promotion);
+        setModalVisible(true);
+    };
+
+    const closeDetails = () => {
+        setModalVisible(false);
+        setSelectedPromotion(null);
+    };
+
     const renderItem = ({ item }) => (
         <Pressable
             style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => openDetails(item)}
         >
-            {/* Contenedor Izquierdo - Icono de Etiqueta */}
             <View style={styles.iconWrap}>
                 <Ionicons name="pricetag" size={22} color="#C4622D" />
             </View>
 
-            {/* Cuerpo Informativo de la Promoción */}
             <View style={styles.cardBody}>
                 <View style={styles.headerRow}>
                     <Text style={styles.cardTitle} numberOfLines={1}>
@@ -37,12 +49,11 @@ const PromotionsScreen = () => {
                         {item.value}% OFF
                     </Text>
                 </View>
-                
+
                 <Text style={styles.cardDescription} numberOfLines={2}>
                     {item.description}
                 </Text>
 
-                {/* Badge con el Código de Cupón Exclusivo */}
                 <View style={styles.badge}>
                     <Ionicons name="gift-outline" size={11} color="#EADDCA" />
                     <Text style={styles.badgeText}>
@@ -51,7 +62,6 @@ const PromotionsScreen = () => {
                 </View>
             </View>
 
-            {/* Indicador visual pasivo */}
             <Ionicons name="chevron-forward" size={16} color="#C4B5A8" />
         </Pressable>
     );
@@ -67,6 +77,14 @@ const PromotionsScreen = () => {
 
     return (
         <View style={styles.container}>
+            <View style={styles.topBand}>
+                <Text style={styles.topBandLabel}>BENEFICIOS EXCLUSIVOS</Text>
+                <Text style={styles.topBandTitle}>Promociones</Text>
+            </View>
+            <Text style={styles.countText}>
+                {promotions?.length ?? 0} Cupones disponibles para ti
+            </Text>
+
             <FlatList
                 data={promotions}
                 keyExtractor={(item) => item._id || item.id}
@@ -80,17 +98,6 @@ const PromotionsScreen = () => {
                 }
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
-                ListHeaderComponent={
-                    <View>
-                        <View style={styles.topBand}>
-                            <Text style={styles.topBandLabel}>BENEFICIOS EXCLUSIVOS</Text>
-                            <Text style={styles.topBandTitle}>Promociones</Text>
-                        </View>
-                        <Text style={styles.countText}>
-                            {promotions?.length ?? 0} Cupones disponibles para ti
-                        </Text>
-                    </View>
-                }
                 ListEmptyComponent={
                     <View style={styles.emptyWrap}>
                         <Ionicons name="pricetags-outline" size={48} color="#C4B5A8" />
@@ -100,6 +107,12 @@ const PromotionsScreen = () => {
                         </Text>
                     </View>
                 }
+            />
+
+            <PromotionDetails
+                visible={modalVisible}
+                promotion={selectedPromotion}
+                onClose={closeDetails}
             />
         </View>
     );
@@ -130,8 +143,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 56,
         paddingBottom: 28,
-        marginHorizontal: -16,
-        marginBottom: 20,
     },
     topBandLabel: {
         fontSize: 10,
@@ -152,12 +163,13 @@ const styles = StyleSheet.create({
         fontWeight: "500",
         textTransform: "uppercase",
         letterSpacing: 0.6,
+        marginTop: 12,
         marginBottom: 10,
-        paddingHorizontal: 4,
+        paddingHorizontal: 20,
     },
     listContent: {
         paddingHorizontal: 16,
-        paddingBottom: 30,
+        paddingBottom: 70,
     },
     card: {
         flexDirection: "row",

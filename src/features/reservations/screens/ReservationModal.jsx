@@ -1,221 +1,299 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-    Modal,
     View,
     Text,
     StyleSheet,
-    TextInput,
+    Modal,
     Pressable,
     ScrollView,
-    ActivityIndicator,
+    TextInput,
     Alert,
+    ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import { useRestaurants } from "../../restaurants/hooks/useRestaurants.js";
-import { useReservations } from "../hooks/useReservations.js"; // Ajustado según tu estructura de hooks
+import { useTables } from "../../tables/hooks/useTables.js";
+import apiClient from "../../../shared/api/apiClient.js";
 
-export const ReservationModal = ({ isOpen, onClose, reservation }) => {
-    const { restaurants, getRestaurants } = useRestaurants();
-    const { saveReservation } = useReservations();
+const STATUS_LABEL = {
+    AVAILABLE: "Disponible",
+    RESERVED: "Reservada",
+    OCCUPIED: "Ocupada",
+};
 
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState({});
-    const [availableTables, setAvailableTables] = useState([]);
+export const ReservationModal = ({ isOpen, onClose, reservation, onSuccess }) => {
+    const isEditing = !!reservation;
 
-    const [formData, setFormData] = useState({
-        restaurant: "",
-        table: "",
-        date: "",
-        time: "",
-        people: "1"
-    });
+    const { restaurants, getRestaurants, loading: loadingRestaurants } = useRestaurants();
+    const { tables, getTables, loading: loadingTables } = useTables();
+
+    const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+    const [selectedTable, setSelectedTable] = useState(null);
+    const [date, setDate] = useState("");
+    const [time, setTime] = useState("");
+    const [people, setPeople] = useState(1);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            setErrors({});
             getRestaurants();
-
-            if (reservation) {
-                setFormData({
-                    restaurant: reservation.restaurant?._id || reservation.restaurant || "",
-                    table: reservation.table?._id || reservation.table || "",
-                    date: reservation.date ? reservation.date.split('T')[0] : "",
-                    time: reservation.time || "",
-                    people: String(reservation.people || reservation.guests || 1)
-                });
-            } else {
-                setFormData({ restaurant: "", table: "", date: "", time: "", people: "1" });
-                setAvailableTables([]);
-            }
+            getTables();
         }
-    }, [reservation, isOpen]);
+    }, [isOpen]);
 
-    // Filtra las mesas de la sucursal seleccionada en tiempo real
     useEffect(() => {
-        if (formData.restaurant && restaurants?.length > 0) {
-            const selectedRest = restaurants.find(
-                (r) => (r._id || r.id) === formData.restaurant
+        if (!isOpen) return;
+
+        if (reservation) {
+            const restaurantId =
+                typeof reservation.restaurant === "object"
+                    ? reservation.restaurant?._id
+                    : reservation.restaurant;
+            const tableId =
+                typeof reservation.table === "object" ? reservation.table?._id : reservation.table;
+
+            setSelectedRestaurant(restaurantId || null);
+            setSelectedTable(tableId || null);
+            setDate(
+                reservation.date ? new Date(reservation.date).toISOString().slice(0, 10) : ""
             );
-            setAvailableTables(selectedRest?.tables || []);
+            setTime(reservation.time || "");
+            setPeople(reservation.people || reservation.guests || 1);
         } else {
-            setAvailableTables([]);
+            setSelectedRestaurant(null);
+            setSelectedTable(null);
+            setDate("");
+            setTime("");
+            setPeople(1);
         }
-    }, [formData.restaurant, restaurants]);
+    }, [isOpen, reservation]);
 
-    const validateForm = () => {
-        let newErrors = {};
-        if (!formData.restaurant) newErrors.restaurant = "Selecciona una sucursal";
-        if (!formData.table) newErrors.table = "Selecciona una mesa";
-        if (!formData.date) newErrors.date = "Fecha requerida (AAAA-MM-DD)";
-        if (!formData.time) newErrors.time = "Hora requerida (HH:MM)";
-        if (!formData.people || Number(formData.people) < 1) newErrors.people = "Mínimo 1 persona";
+    const filteredTables = useMemo(() => {
+        if (!selectedRestaurant) return [];
+        return (tables || []).filter((t) => {
+            const tRestaurantId = typeof t.restaurant === "object" ? t.restaurant?._id : t.restaurant;
+            return tRestaurantId === selectedRestaurant;
+        });
+    }, [tables, selectedRestaurant]);
 
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+    const currentTableData = filteredTables.find((t) => (t._id || t.id) === selectedTable);
+
+    const incrementPeople = () => {
+        setPeople((p) => {
+            const next = p + 1;
+            if (currentTableData?.capacity && next > currentTableData.capacity) return p;
+            return next;
+        });
+    };
+
+    const decrementPeople = () => setPeople((p) => Math.max(1, p - 1));
+
+    const validate = () => {
+        if (!selectedRestaurant) return "Selecciona un restaurante";
+        if (!selectedTable) return "Selecciona una mesa";
+        if (!date) return "Ingresa la fecha (YYYY-MM-DD)";
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "Formato de fecha inválido, usa YYYY-MM-DD";
+        if (!time) return "Ingresa la hora (HH:MM)";
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return "Formato de hora inválido, usa HH:MM";
+        if (currentTableData?.capacity && people > currentTableData.capacity) {
+            return `La mesa seleccionada tiene capacidad máxima de ${currentTableData.capacity}`;
+        }
+        return null;
     };
 
     const handleSubmit = async () => {
-        if (!validateForm()) return;
+        const validationError = validate();
+        if (validationError) {
+            Alert.alert("Datos incompletos", validationError);
+            return;
+        }
 
-        setLoading(true);
+        const payload = {
+            restaurant: selectedRestaurant,
+            table: selectedTable,
+            date,
+            time,
+            people,
+        };
+
         try {
-            const payload = {
-                ...formData,
-                people: Number(formData.people)
-            };
-            await saveReservation(payload, reservation?._id || reservation?.id);
-            Alert.alert("Éxito", reservation ? "Reserva actualizada" : "Reserva creada con éxito");
+            setSubmitting(true);
+            if (isEditing) {
+                const id = reservation._id || reservation.id;
+                await apiClient.put(`/reservations/${id}`, payload);
+                Alert.alert("Éxito", "Reserva actualizada correctamente.");
+            } else {
+                await apiClient.post("/reservations", payload);
+                Alert.alert("Éxito", "Reserva creada correctamente.");
+            }
+            onSuccess?.();
             onClose();
-        } catch (error) {
-            Alert.alert("Error", error || "Ocurrió un error al procesar tu solicitud");
+        } catch (err) {
+            const message = err.response?.data?.message || "No se pudo guardar la reserva.";
+            Alert.alert("Error", message);
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
     return (
-        <Modal
-            visible={isOpen}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={onClose}
-        >
+        <Modal visible={isOpen} transparent animationType="slide" onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
-                <View style={styles.modalContainer}>
-                    {/* Header */}
-                    <View style={styles.modalHeader}>
-                        <View style={styles.headerTitleWrap}>
-                            <Ionicons name="restaurant" size={20} color="#FAF6F1" />
-                            <Text style={styles.modalTitle}>
-                                {reservation ? "Editar Reserva" : "Nueva Reserva"}
-                            </Text>
+                <View style={styles.modalCard}>
+                    <View style={styles.modalHandle} />
+
+                    <ScrollView
+                        style={styles.scrollArea}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={styles.modalIconWrap}>
+                            <Ionicons name="calendar" size={26} color="#694f3dff" />
                         </View>
-                        <Pressable onPress={onClose} style={styles.btnClose}>
-                            <Ionicons name="close" size={24} color="#FAF6F1" />
+
+                        <Text style={styles.modalTitle}>
+                            {isEditing ? "Editar Reserva" : "Nueva Reserva"}
+                        </Text>
+
+                        <Text style={styles.sectionLabel}>Restaurante</Text>
+                        {loadingRestaurants && !restaurants?.length ? (
+                            <ActivityIndicator color="#C4622D" style={{ marginVertical: 10 }} />
+                        ) : (
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.chipsRow}
+                            >
+                                {(restaurants || []).map((r) => {
+                                    const id = r._id || r.id;
+                                    const active = selectedRestaurant === id;
+                                    return (
+                                        <Pressable
+                                            key={id}
+                                            style={[styles.chip, active && styles.chipActive]}
+                                            onPress={() => {
+                                                setSelectedRestaurant(id);
+                                                setSelectedTable(null);
+                                            }}
+                                        >
+                                            <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                                                {r.name}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </ScrollView>
+                        )}
+
+                        <Text style={styles.sectionLabel}>Mesa</Text>
+                        {!selectedRestaurant ? (
+                            <Text style={styles.hintText}>Primero selecciona un restaurante</Text>
+                        ) : loadingTables && !tables?.length ? (
+                            <ActivityIndicator color="#C4622D" style={{ marginVertical: 10 }} />
+                        ) : filteredTables.length === 0 ? (
+                            <Text style={styles.hintText}>No hay mesas para este restaurante</Text>
+                        ) : (
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.chipsRow}
+                            >
+                                {filteredTables.map((t) => {
+                                    const id = t._id || t.id;
+                                    const active = selectedTable === id;
+                                    const isOccupied =
+                                        t.status && t.status !== "AVAILABLE" && id !== selectedTable;
+                                    return (
+                                        <Pressable
+                                            key={id}
+                                            disabled={isOccupied}
+                                            style={[
+                                                styles.chip,
+                                                active && styles.chipActive,
+                                                isOccupied && styles.chipDisabled,
+                                            ]}
+                                            onPress={() => setSelectedTable(id)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.chipText,
+                                                    active && styles.chipTextActive,
+                                                    isOccupied && styles.chipTextDisabled,
+                                                ]}
+                                            >
+                                                Mesa {t.tableNumber ?? id} · {t.capacity} pers.
+                                            </Text>
+                                            {isOccupied && (
+                                                <Text style={styles.chipSubtext}>
+                                                    {STATUS_LABEL[t.status] || t.status}
+                                                </Text>
+                                            )}
+                                        </Pressable>
+                                    );
+                                })}
+                            </ScrollView>
+                        )}
+
+                        <View style={styles.row}>
+                            <View style={styles.halfField}>
+                                <Text style={styles.sectionLabel}>Fecha</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="YYYY-MM-DD"
+                                    placeholderTextColor="#C4B5A8"
+                                    value={date}
+                                    onChangeText={setDate}
+                                    keyboardType="numbers-and-punctuation"
+                                />
+                            </View>
+                            <View style={styles.halfField}>
+                                <Text style={styles.sectionLabel}>Hora</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="HH:MM"
+                                    placeholderTextColor="#C4B5A8"
+                                    value={time}
+                                    onChangeText={setTime}
+                                    keyboardType="numbers-and-punctuation"
+                                />
+                            </View>
+                        </View>
+
+                        <Text style={styles.sectionLabel}>Personas</Text>
+                        <View style={styles.stepperRow}>
+                            <Pressable style={styles.stepperBtn} onPress={decrementPeople}>
+                                <Ionicons name="remove" size={18} color="#C4622D" />
+                            </Pressable>
+                            <Text style={styles.stepperValue}>{people}</Text>
+                            <Pressable style={styles.stepperBtn} onPress={incrementPeople}>
+                                <Ionicons name="add" size={18} color="#C4622D" />
+                            </Pressable>
+                            {currentTableData?.capacity && (
+                                <Text style={styles.capacityHint}>
+                                    Máx. {currentTableData.capacity}
+                                </Text>
+                            )}
+                        </View>
+                    </ScrollView>
+
+                    <View style={styles.actionsRow}>
+                        <Pressable style={styles.btnCancel} onPress={onClose} disabled={submitting}>
+                            <Text style={styles.btnCancelText}>Cancelar</Text>
                         </Pressable>
-                    </View>
-
-                    {/* Formulario */}
-                    <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
-                        
-                        {/* Selector de Sucursal */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>SUCURSAL / RESTAURANTE</Text>
-                            <View style={[styles.pickerWrap, errors.restaurant && styles.inputError]}>
-                                <Picker
-                                    selectedValue={formData.restaurant}
-                                    onValueChange={(itemValue) => {
-                                        setFormData({ ...formData, restaurant: itemValue, table: "" });
-                                    }}
-                                    dropdownIconColor="#4A3728"
-                                >
-                                    <Picker.Item label="Selecciona una sucursal..." value="" color="#8C6B55" />
-                                    {restaurants?.map((r) => (
-                                        <Picker.Item key={r._id || r.id} label={r.name} value={r._id || r.id} color="#2C1A0E" />
-                                    ))}
-                                </Picker>
-                            </View>
-                            {errors.restaurant && <Text style={styles.errorLabel}>{errors.restaurant}</Text>}
-                        </View>
-
-                        {/* Selector de Mesa Dinámico */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>SELECCIONAR MESA</Text>
-                            <View style={[styles.pickerWrap, errors.table && styles.inputError]}>
-                                <Picker
-                                    selectedValue={formData.table}
-                                    onValueChange={(itemValue) => setFormData({ ...formData, table: itemValue })}
-                                    disabled={!formData.restaurant}
-                                    dropdownIconColor="#4A3728"
-                                >
-                                    <Picker.Item label={formData.restaurant ? "Selecciona una mesa..." : "Primero elige una sucursal"} value="" color="#8C6B55" />
-                                    {availableTables.map((t) => (
-                                        <Picker.Item 
-                                            key={t._id || t.id} 
-                                            label={`Mesa ${t.number || t.name} (Capacidad: ${t.capacity || t.chairs || 4})`} 
-                                            value={t._id || t.id} 
-                                            color="#2C1A0E" 
-                                        />
-                                    ))}
-                                </Picker>
-                            </View>
-                            {errors.table && <Text style={styles.errorLabel}>{errors.table}</Text>}
-                        </View>
-
-                        {/* Campo Fecha */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>FECHA (AAAA-MM-DD)</Text>
-                            <TextInput
-                                style={[styles.input, errors.date && styles.inputError]}
-                                placeholder="Ej: 2026-07-15"
-                                placeholderTextColor="#C4B5A8"
-                                value={formData.date}
-                                onChangeText={(text) => setFormData({ ...formData, date: text })}
-                            />
-                            {errors.date && <Text style={styles.errorLabel}>{errors.date}</Text>}
-                        </View>
-
-                        {/* Campo Hora */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>HORA (HH:MM)</Text>
-                            <TextInput
-                                style={[styles.input, errors.time && styles.inputError]}
-                                placeholder="Ej: 19:30"
-                                placeholderTextColor="#C4B5A8"
-                                value={formData.time}
-                                onChangeText={(text) => setFormData({ ...formData, time: text })}
-                            />
-                            {errors.time && <Text style={styles.errorLabel}>{errors.time}</Text>}
-                        </View>
-
-                        {/* Cantidad de comensales */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>NÚMERO DE COMENSALES</Text>
-                            <TextInput
-                                style={[styles.input, errors.people && styles.inputError]}
-                                keyboardType="numeric"
-                                value={formData.people}
-                                onChangeText={(text) => setFormData({ ...formData, people: text })}
-                            />
-                            {errors.people && <Text style={styles.errorLabel}>{errors.people}</Text>}
-                        </View>
-
-                        {/* Botón de envío */}
-                        <Pressable 
-                            style={({ pressed }) => [styles.btnSubmit, pressed && styles.btnSubmitPressed]}
+                        <Pressable
+                            style={[styles.btnSave, submitting && styles.btnSaveDisabled]}
                             onPress={handleSubmit}
-                            disabled={loading}
+                            disabled={submitting}
                         >
-                            {loading ? (
-                                <ActivityIndicator color="#FFFFFF" />
+                            {submitting ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
                             ) : (
-                                <Text style={styles.btnSubmitText}>
-                                    {reservation ? "GUARDAR CAMBIOS" : "CONFIRMAR RESERVA"}
+                                <Text style={styles.btnSaveText}>
+                                    {isEditing ? "Guardar cambios" : "Crear reserva"}
                                 </Text>
                             )}
                         </Pressable>
-                    </ScrollView>
+                    </View>
                 </View>
             </View>
         </Modal>
@@ -227,100 +305,178 @@ export default ReservationModal;
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: "rgba(74, 55, 40, 0.6)",
         justifyContent: "flex-end",
+        backgroundColor: "rgba(44, 26, 14, 0.5)",
     },
-    modalContainer: {
+    modalCard: {
         backgroundColor: "#FFFFFF",
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingTop: 24,
+        paddingHorizontal: 24,
+        alignItems: "center",
         maxHeight: "90%",
     },
-    modalHeader: {
-        backgroundColor: "#4A3728",
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: 24,
-        paddingVertical: 20,
-    },
-    headerTitleWrap: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: "700",
-        color: "#FAF6F1",
-    },
-    btnClose: {
-        padding: 4,
-    },
-    formContainer: {
-        padding: 24,
-        paddingBottom: 40,
-    },
-    inputGroup: {
+    modalHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: "#E5DAD0",
         marginBottom: 16,
     },
-    label: {
-        fontSize: 11,
+    scrollArea: {
+        alignSelf: "stretch",
+    },
+    scrollContent: {
+        alignItems: "center",
+        paddingBottom: 10,
+    },
+    modalIconWrap: {
+        width: 52,
+        height: 52,
+        borderRadius: 16,
+        backgroundColor: "#FFF0E8",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 10,
+    },
+    modalTitle: {
+        fontSize: 19,
         fontWeight: "700",
-        color: "#D2B48C",
-        letterSpacing: 1,
-        marginBottom: 6,
+        color: "#2C1A0E",
+        marginBottom: 16,
+        textAlign: "center",
+    },
+    sectionLabel: {
+        alignSelf: "flex-start",
+        fontSize: 12,
+        fontWeight: "700",
+        color: "#2C1A0E",
+        textTransform: "uppercase",
+        letterSpacing: 0.6,
+        marginBottom: 8,
+        marginTop: 12,
+    },
+    hintText: {
+        alignSelf: "flex-start",
+        fontSize: 13,
+        color: "#8C6B55",
+        marginBottom: 4,
+    },
+    chipsRow: {
+        alignSelf: "stretch",
+    },
+    chip: {
+        backgroundColor: "#FFF0E8",
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        marginRight: 8,
+        borderWidth: 1.5,
+        borderColor: "transparent",
+    },
+    chipActive: {
+        backgroundColor: "#2C1A0E",
+        borderColor: "#C4622D",
+    },
+    chipDisabled: {
+        backgroundColor: "#F2F2F2",
+        opacity: 0.6,
+    },
+    chipText: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: "#6F4E37",
+    },
+    chipTextActive: {
+        color: "#FAF6F1",
+    },
+    chipTextDisabled: {
+        color: "#A8A8A8",
+    },
+    chipSubtext: {
+        fontSize: 10,
+        color: "#DC2626",
+        fontWeight: "700",
+        marginTop: 2,
+    },
+    row: {
+        flexDirection: "row",
+        alignSelf: "stretch",
+        gap: 12,
+    },
+    halfField: {
+        flex: 1,
     },
     input: {
-        backgroundColor: "#FFFFFF",
-        borderWidth: 1,
-        borderColor: "#EADDCA",
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        backgroundColor: "#FAF6F1",
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         fontSize: 14,
         color: "#2C1A0E",
-        fontWeight: "600",
-    },
-    pickerWrap: {
-        backgroundColor: "#FFFFFF",
         borderWidth: 1,
         borderColor: "#EADDCA",
-        borderRadius: 16,
-        overflow: "hidden",
     },
-    inputError: {
-        borderColor: "#DC2626",
-        backgroundColor: "#FFF5F5",
+    stepperRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        alignSelf: "flex-start",
+        gap: 14,
     },
-    errorLabel: {
-        color: "#DC2626",
-        fontSize: 10,
+    stepperBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        backgroundColor: "#FFF0E8",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    stepperValue: {
+        fontSize: 16,
         fontWeight: "700",
-        marginTop: 4,
+        color: "#2C1A0E",
+        minWidth: 20,
+        textAlign: "center",
+    },
+    capacityHint: {
+        fontSize: 11,
+        color: "#8C6B55",
         marginLeft: 4,
     },
-    btnSubmit: {
-        backgroundColor: "#4A3728",
-        borderRadius: 18,
-        paddingVertical: 16,
+    actionsRow: {
+        flexDirection: "row",
+        alignSelf: "stretch",
+        gap: 12,
+        paddingTop: 16,
+        paddingBottom: 24,
+    },
+    btnCancel: {
+        flex: 1,
+        paddingVertical: 13,
+        borderRadius: 14,
+        backgroundColor: "#FFF0E8",
         alignItems: "center",
-        marginTop: 12,
-        shadowColor: "#4A3728",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
     },
-    btnSubmitPressed: {
-        backgroundColor: "#2C1A0E",
-    },
-    btnSubmitText: {
-        color: "#FFFFFF",
-        fontWeight: "700",
+    btnCancelText: {
         fontSize: 14,
-        letterSpacing: 1,
+        fontWeight: "700",
+        color: "#6F4E37",
+    },
+    btnSave: {
+        flex: 1.4,
+        paddingVertical: 13,
+        borderRadius: 14,
+        backgroundColor: "#8C6B55",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    btnSaveDisabled: {
+        opacity: 0.7,
+    },
+    btnSaveText: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#FFFFFF",
     },
 });

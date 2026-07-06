@@ -1,16 +1,27 @@
+import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Platform } from "react-native";
 
-// Importaciones de todas las pantallas basadas en tu estructura de carpetas
 import RestaurantsScreen from "../features/restaurants/screens/RestaurantsScreen";
 import MenusScreen from "../features/menus/screens/MenusScreen.jsx";
-import TablesScreen from "../features/tables/screens/TablesScreen.jsx";
 import OrdersScreen from "../features/orders/screens/OrdersScreen.jsx";
 import PromotionsScreen from "../features/promotions/screens/PromotionsScreen.jsx";
 import ReservationsScreen from "../features/reservations/screens/ReservationsScreen.jsx";
 import ProfileScreen from "../features/profile/screens/ProfileScreen";
+import CartScreen from "../features/cart/screens/CartScreen.jsx";
+import PaymentMethodsScreen from "../features/paymentMethods/screens/PaymentMethodsScreen.jsx";
 
 const Tab = createBottomTabNavigator();
+
+const TAB_ICON = {
+    Restaurantes: "storefront",
+    Menús: "restaurant",
+    Pedidos: "receipt",
+    Promos: "pricetag",
+    Reservas: "calendar",
+    Perfil: "person",
+};
 
 const MainTabs = () => {
     return (
@@ -19,40 +30,55 @@ const MainTabs = () => {
                 headerShown: false,
                 tabBarActiveTintColor: "#4A3728",
                 tabBarInactiveTintColor: "#A8A8A8",
-                tabBarStyle: { paddingBottom: 5, height: 60 },
+                tabBarStyle: styles.tabBar,
+                tabBarShowLabel: false,
                 tabBarIcon: ({ focused, color, size }) => {
-                    let iconName;
-                    
-                    // Mapeo dinámico de iconos según la pestaña
-                    if (route.name === "Restaurantes") {
-                        iconName = focused ? "storefront" : "storefront-outline";
-                    } else if (route.name === "Menús") {
-                        iconName = focused ? "restaurant" : "restaurant-outline";
-                    } else if (route.name === "Mesas") {
-                        iconName = focused ? "grid" : "grid-outline";
-                    } else if (route.name === "Pedidos") {
-                        iconName = focused ? "receipt" : "receipt-outline";
-                    } else if (route.name === "Promos") {
-                        iconName = focused ? "pricetag" : "pricetag-outline";
-                    } else if (route.name === "Reservas") {
-                        iconName = focused ? "calendar" : "calendar-outline";
-                    } else if (route.name === "Perfil") {
-                        iconName = focused ? "person" : "person-outline";
-                    }
-                    
-                    return <Ionicons name={iconName} size={size} color={color} />;
+                    const iconName = TAB_ICON[route.name];
+                    return (
+                        <Ionicons
+                            name={focused ? iconName : `${iconName}-outline`}
+                            size={22}
+                            color={color}
+                        />
+                    );
                 },
             })}
         >
             <Tab.Screen name="Restaurantes" component={RestaurantsScreen} />
             <Tab.Screen name="Menús" component={MenusScreen} />
-            <Tab.Screen name="Mesas" component={TablesScreen} />
+            <Tab.Screen name="Reservas" component={ReservationsScreen} />
             <Tab.Screen name="Pedidos" component={OrdersScreen} />
             <Tab.Screen name="Promos" component={PromotionsScreen} />
-            <Tab.Screen name="Reservas" component={ReservationsScreen} />
             <Tab.Screen name="Perfil" component={ProfileScreen} />
+            <Tab.Screen name="Cart" component={CartScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+            <Tab.Screen name="PaymentMethods" component={PaymentMethodsScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
         </Tab.Navigator>
     );
 };
+
+const styles = StyleSheet.create({
+    tabBar: {
+        height: 65,
+        paddingTop: 10,
+        backgroundColor: "#FFFFFF",
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        elevation: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        position: 'absolute',
+    },
+    activeTabBackground: {
+        backgroundColor: "#4A3728",
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: 20,
+        color: "#FFFFFF",
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+});
 
 export default MainTabs;

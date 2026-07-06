@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -10,35 +10,59 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRestaurants } from "../hooks/useRestaurants.js";
+import RestaurantDetails from "./RestaurantDetails";
+import { openMaps } from "../../../shared/constants/openMaps.js";
 
 const RestaurantsScreen = () => {
     const { restaurants, loading, getRestaurants } = useRestaurants();
+    const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
         getRestaurants();
     }, []);
 
+    const openDetails = (restaurant) => {
+        setSelectedRestaurant(restaurant);
+        setModalVisible(true);
+    };
+
+    const closeDetails = () => {
+        setModalVisible(false);
+        setSelectedRestaurant(null);
+    };
+
     const renderItem = ({ item }) => (
         <Pressable
             style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => openDetails(item)}
         >
-            <View style={styles.iconWrap}>
-                <Ionicons name="storefront" size={24} color="#C4622D" />
+            <View style={styles.cardHero}>
+                <Ionicons name="storefront" size={30} color="#C4622D" />
             </View>
 
             <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <View style={styles.infoItem}>
-                    <Ionicons name="location-outline" size={13} color="#8C6B55" />
-                    <Text style={styles.infoText} numberOfLines={1}>{item.address}</Text>
-                </View>
-                <View style={styles.infoItem}>
-                    <Ionicons name="call-outline" size={13} color="#8C6B55" />
-                    <Text style={styles.infoText}>{item.phone}</Text>
-                </View>
-            </View>
+                <Text style={styles.cardTitle} numberOfLines={1}>
+                    {item.name}
+                </Text>
 
-            <Ionicons name="chevron-forward" size={16} color="#C4B5A8" />
+                <View style={styles.infoItem}>
+                    <Ionicons name="call-outline" size={12} color="#8C6B55" />
+                    <Text style={styles.infoText} numberOfLines={1}>
+                        {item.phone || "Sin teléfono"}
+                    </Text>
+                </View>
+
+                <Pressable
+                    style={styles.mapRow}
+                    onPress={() => openMaps(item.location?.latitude, item.location?.longitude)}
+                >
+                    <Ionicons name="location-outline" size={12} color="#C4622D" />
+                    <Text style={styles.mapLinkText} numberOfLines={1}>
+                        Ver en Maps
+                    </Text>
+                </Pressable>
+            </View>
         </Pressable>
     );
 
@@ -53,10 +77,21 @@ const RestaurantsScreen = () => {
 
     return (
         <View style={styles.container}>
+            <View style={styles.topBand}>
+                <Text style={styles.topBandLabel}>NUESTRAS SUCURSALES</Text>
+                <Text style={styles.topBandTitle}>Restaurantes</Text>
+            </View>
+            <Text style={styles.countText}>
+                {restaurants?.length ?? 0} sucursales disponibles
+            </Text>
+
             <FlatList
+                key={2}
                 data={restaurants}
                 keyExtractor={(item) => item._id || item.id}
                 renderItem={renderItem}
+                numColumns={2}
+                columnWrapperStyle={styles.columnWrapper}
                 refreshControl={
                     <RefreshControl
                         refreshing={loading}
@@ -66,17 +101,6 @@ const RestaurantsScreen = () => {
                 }
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
-                ListHeaderComponent={
-                    <View>
-                        <View style={styles.topBand}>
-                            <Text style={styles.topBandLabel}>NUESTRAS SUCURSALES</Text>
-                            <Text style={styles.topBandTitle}>Restaurantes</Text>
-                        </View>
-                        <Text style={styles.countText}>
-                            {restaurants?.length ?? 0} sucursales disponibles
-                        </Text>
-                    </View>
-                }
                 ListEmptyComponent={
                     <View style={styles.emptyWrap}>
                         <Ionicons name="storefront-outline" size={48} color="#C4B5A8" />
@@ -84,6 +108,12 @@ const RestaurantsScreen = () => {
                         <Text style={styles.emptyText}>Por el momento no hay sucursales disponibles</Text>
                     </View>
                 }
+            />
+
+            <RestaurantDetails
+                visible={modalVisible}
+                restaurant={selectedRestaurant}
+                onClose={closeDetails}
             />
         </View>
     );
@@ -114,8 +144,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 56,
         paddingBottom: 28,
-        marginHorizontal: -16,
-        marginBottom: 20,
     },
     topBandLabel: {
         fontSize: 10,
@@ -136,21 +164,23 @@ const styles = StyleSheet.create({
         fontWeight: "500",
         textTransform: "uppercase",
         letterSpacing: 0.6,
+        marginTop: 12,
         marginBottom: 10,
-        paddingHorizontal: 4,
+        paddingHorizontal: 20,
     },
     listContent: {
         paddingHorizontal: 16,
-        paddingBottom: 30,
+        paddingBottom: 70,
+    },
+    columnWrapper: {
+        justifyContent: "space-between",
+        marginBottom: 14,
     },
     card: {
-        flexDirection: "row",
-        alignItems: "center",
+        width: "48%",
         backgroundColor: "#FFFFFF",
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 12,
-        gap: 14,
+        borderRadius: 20,
+        overflow: "hidden",
         shadowColor: "#2C1A0E",
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.07,
@@ -158,22 +188,20 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     cardPressed: {
-        backgroundColor: "#FAF6F1",
+        opacity: 0.9,
     },
-    iconWrap: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
+    cardHero: {
+        height: 80,
         backgroundColor: "#FFF0E8",
         justifyContent: "center",
         alignItems: "center",
     },
     cardBody: {
-        flex: 1,
-        gap: 4,
+        padding: 12,
+        gap: 6,
     },
     cardTitle: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "700",
         color: "#2C1A0E",
         marginBottom: 2,
@@ -184,14 +212,29 @@ const styles = StyleSheet.create({
         gap: 5,
     },
     infoText: {
-        fontSize: 13,
+        fontSize: 12,
         color: "#6F4E37",
         flex: 1,
+    },
+    mapRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        marginTop: 2,
+        paddingTop: 3,
+        borderTopWidth: 1,
+        borderTopColor: "#FAF6F1",
+    },
+    mapLinkText: {
+        fontSize: 12,
+        color: "#8C6B55",
+        fontWeight: "700",
     },
     emptyWrap: {
         alignItems: "center",
         paddingTop: 60,
         gap: 8,
+        width: "100%",
     },
     emptyTitle: {
         fontSize: 16,

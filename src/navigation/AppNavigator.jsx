@@ -7,6 +7,7 @@ import { useAuthStore } from "../shared/store/authStore";
 const AppNavigator = () => {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const [isReady, setIsReady] = React.useState(false);
+    const { sessionExpired } = useAuthStore();
 
     React.useEffect(() => {
         setIsReady(true);
@@ -14,7 +15,7 @@ const AppNavigator = () => {
 
     return (
         <NavigationContainer>
-            {isAuthenticated ? <MainTabs /> : <AuthStack />}
+            {sessionExpired ? <AuthStack /> : (isAuthenticated ? <MainTabs /> : <AuthStack />)}
         </NavigationContainer>
     );
 };
