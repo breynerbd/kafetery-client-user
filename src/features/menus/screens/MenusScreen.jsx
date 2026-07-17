@@ -8,6 +8,7 @@ import {
     Pressable,
     ActivityIndicator,
     RefreshControl,
+    Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -35,6 +36,23 @@ const MenusScreen = () => {
         setSelectedMenu(null);
     };
 
+    const ratingDisplay = (rating, count) => {
+        if (!rating || rating === 0) {
+            return (
+                <View style={styles.infoItem}>
+                    <Ionicons name="star-outline" size={12} color="#8C6B55" />
+                    <Text style={styles.infoText}>Vacío</Text>
+                </View>
+            );
+        }
+        return (
+            <View style={styles.infoItem}>
+                <Ionicons name="star" size={12} color="#f4b300ff" />
+                <Text style={styles.infoText}>{rating ? rating.toFixed(1) : "0.0"} {count !== undefined ? `(${count})` : ""}</Text>
+            </View>
+        );
+    };
+
     const restaurantOptions = useMemo(() => {
         const map = new Map();
         (menus || []).forEach((m) => {
@@ -56,7 +74,7 @@ const MenusScreen = () => {
             onPress={() => openDetails(item)}
         >
             <View style={styles.cardHero}>
-                <Ionicons name="fast-food" size={30} color="#C4622D" />
+                <Image source={{ uri: item.image }} style={styles.menuImage} />
                 <View style={styles.priceTag}>
                     <Text style={styles.priceTagText}>Q{item.price?.toFixed(2)}</Text>
                 </View>
@@ -82,6 +100,8 @@ const MenusScreen = () => {
                         <View style={{ width: 2 }} />
                         <Ionicons name="cube-outline" size={12} color="#8C6B55" />
                         <Text style={styles.infoText}>{item.stock ?? 0}</Text>
+                        <View style={{ width: 2 }} />
+                        {ratingDisplay(item.averageRating, item.totalRatings)}
                     </View>
                 </View>
             </View>
@@ -321,7 +341,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         bottom: 8,
         right: 8,
-        backgroundColor: "#8C6B55",
+        backgroundColor: "#2C1A0E",
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 8,
@@ -415,5 +435,11 @@ const styles = StyleSheet.create({
         color: "#FFFFFF",
         fontSize: 11,
         fontWeight: "800",
+    },
+    menuImage: {
+        width: "100%",
+        height: "100%",
+        resizeMode: 'cover',
+        borderRadius: 15,
     },
 });

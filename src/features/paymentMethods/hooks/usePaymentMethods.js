@@ -16,8 +16,11 @@ export const usePaymentMethods = () => {
             setCards(data);
             return data;
         } catch (err) {
-            setError(err.response?.data?.message || "Error al obtener tus tarjetas");
-            console.error("Error en usePaymentMethods:", err);
+            console.log("STATUS:", err.response?.status);
+            console.log("BODY:", err.response?.data);
+            console.log("URL:", err.config?.url);
+
+            setError(err.response?.data?.message || "Error");
         } finally {
             setLoading(false);
         }

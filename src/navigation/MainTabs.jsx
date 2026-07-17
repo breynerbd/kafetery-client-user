@@ -15,7 +15,7 @@ import PaymentMethodsScreen from "../features/paymentMethods/screens/PaymentMeth
 const Tab = createBottomTabNavigator();
 
 const TAB_ICON = {
-    Restaurantes: "storefront",
+    Sucursales: "storefront",
     Menús: "restaurant",
     Pedidos: "receipt",
     Promos: "pricetag",
@@ -31,20 +31,20 @@ const MainTabs = () => {
                 tabBarActiveTintColor: "#4A3728",
                 tabBarInactiveTintColor: "#A8A8A8",
                 tabBarStyle: styles.tabBar,
-                tabBarShowLabel: false,
+                tabBarShowLabel: true,
                 tabBarIcon: ({ focused, color, size }) => {
                     const iconName = TAB_ICON[route.name];
                     return (
                         <Ionicons
                             name={focused ? iconName : `${iconName}-outline`}
-                            size={22}
+                            size={24}
                             color={color}
                         />
                     );
                 },
             })}
         >
-            <Tab.Screen name="Restaurantes" component={RestaurantsScreen} />
+            <Tab.Screen name="Sucursales" component={RestaurantsScreen} />
             <Tab.Screen name="Menús" component={MenusScreen} />
             <Tab.Screen name="Reservas" component={ReservationsScreen} />
             <Tab.Screen name="Pedidos" component={OrdersScreen} />
@@ -58,8 +58,7 @@ const MainTabs = () => {
 
 const styles = StyleSheet.create({
     tabBar: {
-        height: 65,
-        paddingTop: 10,
+        height: 68,
         backgroundColor: "#FFFFFF",
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,

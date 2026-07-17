@@ -172,6 +172,10 @@ const RegisterScreen = () => {
                                 value: 8,
                                 message: "Debe tener mínimo 8 caracteres",
                             },
+                            pattern: {
+                                value: /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/,
+                                message: "Debe tener al menos una mayúscula, un número y un carácter especial",
+                            },
                         }}
                         render={({ field: { onChange, value } }) => (
                             <Input

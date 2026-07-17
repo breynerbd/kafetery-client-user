@@ -92,12 +92,30 @@ export const ReservationModal = ({ isOpen, onClose, reservation, onSuccess }) =>
         if (!selectedRestaurant) return "Selecciona un restaurante";
         if (!selectedTable) return "Selecciona una mesa";
         if (!date) return "Ingresa la fecha (YYYY-MM-DD)";
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "Formato de fecha inválido, usa YYYY-MM-DD";
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+            return "Formato de fecha inválido, usa YYYY-MM-DD";
+
         if (!time) return "Ingresa la hora (HH:MM)";
-        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return "Formato de hora inválido, usa HH:MM";
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
+            return "Formato de hora inválido, usa HH:MM";
+
+        const selectedDateTime = new Date(`${date}T${time}:00`);
+
+        if (isNaN(selectedDateTime.getTime())) {
+            return "La fecha u hora no son válidas.";
+        }
+
+        const minReservationDate = new Date();
+        minReservationDate.setMinutes(minReservationDate.getMinutes() + 30);
+
+        if (selectedDateTime < minReservationDate) {
+            return "La reserva debe realizarse con al menos 30 minutos de anticipación.";
+        }
+
         if (currentTableData?.capacity && people > currentTableData.capacity) {
             return `La mesa seleccionada tiene capacidad máxima de ${currentTableData.capacity}`;
         }
+
         return null;
     };
 

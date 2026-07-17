@@ -25,5 +25,8 @@
   },
   "name": "kafetery-client-user",
   "version": "1.0.0",
-  "scripts": {}
+  "scripts": {},
+  "devDependencies": {
+    "babel-preset-expo": "^57.0.2"
+  }
 }

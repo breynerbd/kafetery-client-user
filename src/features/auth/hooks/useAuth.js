@@ -31,12 +31,32 @@ export const useAuth = () => {
             await loginStore(accessToken, user, refreshToken);
 
             await fetchProfileData();
-            return true;
-        } catch (err) {
-            console.log("LOGIN ERROR:", err.response?.data || err.message);
 
-            setError(err.response?.data?.message || err.message);
-            return false;
+            return {
+                success: true,
+            };
+        } catch (err) {
+            console.log("--- ERROR DETALLADO ---");
+            console.log("Status:", err.response?.status);
+            console.log("Data:", err.response?.data);
+            console.log("Message:", err.message);
+            console.log("-----------------------");
+
+            let message = "Error de conexión con el servidor.";
+
+            if (err.response) {
+                const status = err.response.status;
+                if (status === 400 || status === 401) {
+                    message = "Correo o contraseña incorrectos.";
+                } else if (status >= 500) {
+                    message = "Error interno del servidor. Intenta más tarde.";
+                } else {
+                    message = err.response.data?.message || "Error al iniciar sesión.";
+                }
+            }
+
+            setError(message);
+            return { success: false, message };
         } finally {
             setLoading(false);
         }

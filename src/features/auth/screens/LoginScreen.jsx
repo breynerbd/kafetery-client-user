@@ -5,8 +5,12 @@ import {
     Image,
     KeyboardAvoidingView,
     Platform,
+    Alert,
     ScrollView,
+    Pressable,
 } from "react-native";
+import React, { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigation } from "@react-navigation/native";
 
@@ -18,6 +22,7 @@ import logo from "../../../../assets/Kafetery_logo.png";
 
 const LoginScreen = () => {
     const navigation = useNavigation();
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
     const { handleLogin, loading } = useAuth();
 
@@ -33,10 +38,13 @@ const LoginScreen = () => {
     });
 
     const onSubmit = async (data) => {
-        const success = await handleLogin(data);
+        const result = await handleLogin(data);
 
-        if (success) {
-        } else {
+        if (!result.success) {
+            Alert.alert(
+                "Error al iniciar sesión",
+                result.message
+            );
         }
     };
 
@@ -97,14 +105,28 @@ const LoginScreen = () => {
                             },
                         }}
                         render={({ field: { onChange, value } }) => (
-                            <Input
-                                label="Contraseña"
-                                placeholder="••••••••"
-                                secureTextEntry
-                                value={value}
-                                onChangeText={onChange}
-                                error={errors.password?.message}
-                            />
+                            <View style={styles.passwordContainer}>
+                                <Input
+                                    label="Contraseña"
+                                    placeholder="••••••••"
+                                    secureTextEntry={!isPasswordVisible}
+                                    value={value}
+                                    onChangeText={onChange}
+                                    // Aplica un estilo específico para el input si es necesario
+                                    containerStyle={styles.passwordInputWrapper}
+                                />
+
+                                <Pressable
+                                    onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                                    style={styles.eyeIconContainer}
+                                >
+                                    <Ionicons
+                                        name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
+                                        size={24}
+                                        color="#8B4513"
+                                    />
+                                </Pressable>
+                            </View>
                         )}
                     />
 
@@ -113,13 +135,6 @@ const LoginScreen = () => {
                         onPress={handleSubmit(onSubmit)}
                         style={styles.button}
                     />
-
-                    <Text
-                        style={styles.forgot}
-                        onPress={() => navigation.navigate("ForgotPassword")}
-                    >
-                        ¿Olvidaste tu contraseña?
-                    </Text>
 
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
@@ -157,6 +172,23 @@ const styles = StyleSheet.create({
     header: {
         alignItems: "center",
         marginBottom: 40,
+    },
+
+    passwordContainer: {
+        width: "100%",
+        marginTop: 10,
+        justifyContent: "center",
+    },
+
+    passwordInputWrapper: {
+        width: "100%",
+    },
+
+    eyeIconContainer: {
+        position: 'absolute',
+        right: 15,
+        top: 38,
+        zIndex: 1,
     },
 
     logo: {

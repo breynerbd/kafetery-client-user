@@ -14,6 +14,7 @@ import { useOrders } from "../hooks/useOrders";
 import { useFocusEffect } from '@react-navigation/native';
 import { usePaymentMethods } from "../../paymentMethods/hooks/usePaymentMethods";
 import AddCardModal from "../../paymentMethods/screens/AddCardModal";
+import RatingModal from "./RatingModal";
 
 const STATUS_MAP = {
     PENDING: {
@@ -85,6 +86,7 @@ const OrderDetails = ({ visible, order, onClose }) => {
     const [addCardVisible, setAddCardVisible] = useState(false);
     const [savingPayment, setSavingPayment] = useState(false);
     const [paymentMethods, setPaymentMethods] = useState([]);
+    const [ratingVisible, setRatingVisible] = useState(false);
 
     useEffect(() => {
         if (visible && order && !order.paymentMethod) {
@@ -236,7 +238,7 @@ const OrderDetails = ({ visible, order, onClose }) => {
                                                             "Orden finalizada correctamente"
                                                         );
 
-                                                        onClose();
+                                                        setRatingVisible(true);
                                                     } catch (err) {
                                                         Alert.alert("Error", err.message);
                                                     }
@@ -636,6 +638,15 @@ const OrderDetails = ({ visible, order, onClose }) => {
                 onAdded={(newCard) => {
                     fetchPaymentMethods();
                     setPaymentMethods(prev => [...prev, newCard]);
+                }}
+            />
+
+            <RatingModal
+                visible={ratingVisible}
+                order={order}
+                onClose={() => {
+                    setRatingVisible(false);
+                    onClose();
                 }}
             />
         </Modal>

@@ -22,8 +22,11 @@ export const useOrders = () => {
             setOrders(data);
             return data;
         } catch (err) {
+            console.log("STATUS:", err.response?.status);
+            console.log("BODY:", err.response?.data);
+            console.log("URL:", err.config?.url);
+
             setError(err.response?.data?.message || "Error al obtener tus órdenes");
-            console.error("Error en useOrders:", err);
         } finally {
             setLoading(false);
         }
@@ -121,11 +124,43 @@ export const useOrders = () => {
         }
     }, [getOrders]);
 
+    const reviewOrder = useCallback(async (orderId, reviewData) => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const res = await apiClient.post(
+                `/orders/${orderId}/review`,
+                reviewData
+            );
+
+            const data = res.data.data || res.data;
+
+            await getOrders();
+
+            return data;
+
+        } catch (err) {
+
+            const message =
+                err.response?.data?.message || "Error al enviar la calificación";
+
+            setError(message);
+
+            throw new Error(message);
+
+        } finally {
+
+            setLoading(false);
+
+        }
+    }, [getOrders]);
+
     useFocusEffect(
         useCallback(() => {
             getOrders();
         }, [getOrders])
     );
 
-    return { orders, getOrders, createOrder, deleteOrder, updatePaymentMethod, completeOrder, loading, creating, error };
+    return { orders, getOrders, createOrder, deleteOrder, updatePaymentMethod, completeOrder, reviewOrder, loading, creating, error };
 };

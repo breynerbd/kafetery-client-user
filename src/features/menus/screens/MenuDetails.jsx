@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, Modal, Pressable, Image, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useCartStore } from "../../../shared/store/cartStore.js";
+import ReviewsModal from "./ReviewsModal";
 
 const MenuDetails = ({ visible, menu, onClose }) => {
     const [quantity, setQuantity] = useState(1);
     const addItem = useCartStore((state) => state.addItem);
     const clearCart = useCartStore((state) => state.clearCart);
     const restaurant = useCartStore((state) => state.restaurant);
+    const [reviewsVisible, setReviewsVisible] = useState(false);
 
     if (!menu) return null;
 
@@ -63,6 +65,23 @@ const MenuDetails = ({ visible, menu, onClose }) => {
         onClose();
     };
 
+    const ratingDisplay = (rating, count) => {
+        if (!rating || rating === 0) {
+            return (
+                <View style={styles.metaItem}>
+                    <Ionicons name="star-outline" size={12} color="#8C6B55" />
+                    <Text style={styles.metaText}>Vacío</Text>
+                </View>
+            );
+        }
+        return (
+            <View style={styles.metaItem}>
+                <Ionicons name="star" size={12} color="#8C6B55" />
+                <Text style={styles.metaText}>{rating ? rating.toFixed(1) : "0.0"} {count !== undefined ? `(${count})` : ""}</Text>
+            </View>
+        );
+    };
+
 
     return (
         <Modal
@@ -78,6 +97,7 @@ const MenuDetails = ({ visible, menu, onClose }) => {
                             <Text style={styles.title} numberOfLines={1}>
                                 {menu.name}
                             </Text>
+                            {ratingDisplay(menu.averageRating, menu.totalRatings)}
                             <Text style={styles.subtitle}>Q{menu.price?.toFixed(2)}</Text>
                         </View>
 
@@ -108,6 +128,23 @@ const MenuDetails = ({ visible, menu, onClose }) => {
                             <Text style={styles.metaText}> {menu.restaurant?.name || "Restaurante"}</Text>
                         </View>
                     </View>
+
+                    <Pressable
+                        style={styles.reviewsButton}
+                        onPress={() => setReviewsVisible(true)}
+                    >
+                        <Ionicons name="star-outline" size={16} color="#FFF" />
+                        <Text style={styles.reviewsButtonText}>
+                            Ver reseñas ({menu.totalRatings || 0})
+                        </Text>
+                    </Pressable>
+                    {reviewsVisible && (
+                        <ReviewsModal
+                            visible={reviewsVisible}
+                            reviews={menu.ratings || []}
+                            onClose={() => setReviewsVisible(false)}
+                        />
+                    )}
 
                     <View style={styles.quantitySection}>
                         <Text style={styles.quantityLabel}>Cantidad</Text>
@@ -155,6 +192,22 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.45)",
         justifyContent: "flex-end",
+    },
+    reviewsButton: {
+        backgroundColor: "#A0522D",
+        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 18,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 20
+    },
+    reviewsButtonText: {
+        color: "#FFF",
+        fontSize: 14,
+        fontWeight: "600",
+        marginLeft: 6,
     },
     modal: {
         backgroundColor: "#FAF6F1",

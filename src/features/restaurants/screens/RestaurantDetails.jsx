@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
     Modal,
     View,
@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import RestaurantMap from "./RestaurantMap";
 import { openMaps } from "../../../shared/constants/openMaps";
+import ReviewsModal from "./ReviewsModal";
 
 const InfoRow = ({ icon, label, value }) => (
     <View style={styles.row}>
@@ -40,6 +41,28 @@ const extractCoords = (location) => {
     return { latitude: undefined, longitude: undefined };
 };
 
+const ratingDisplay = (rating, count) => {
+    if (!rating || rating === 0) {
+        return (
+            <View style={styles.rating}>
+                <Ionicons name="star-outline" size={12} color="#8C6B55" />
+                <Text style={styles.ratingText}>Sin valoraciones</Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.rating}>
+            <Ionicons name="star" size={12} color="#f4b300ff" />
+            <Text style={styles.ratingText}>
+                {rating.toFixed(1)} {count !== undefined ? `(${count})` : ""}
+            </Text>
+        </View>
+    );
+};
+
+
+
 const RestaurantDetails = ({ visible, restaurant, onClose }) => {
     if (!restaurant) return null;
 
@@ -53,6 +76,7 @@ const RestaurantDetails = ({ visible, restaurant, onClose }) => {
             ? `${restaurant.openingTime} - ${restaurant.closingTime}`
             : "No disponible";
 
+    const [reviewsVisible, setReviewsVisible] = useState(false);
     return (
         <Modal
             visible={visible}
@@ -129,6 +153,32 @@ const RestaurantDetails = ({ visible, restaurant, onClose }) => {
                                 value={schedule}
                             />
 
+                            <InfoRow
+                                icon="star-outline"
+                                label="Calificación"
+                                value={
+                                    restaurant.averageRating
+                                        ? `${restaurant.averageRating.toFixed(1)} (${restaurant.totalRatings || 0})`
+                                        : "Sin valoraciones"
+                                }
+                            />
+
+                            <Pressable
+                                style={styles.reviewsButton}
+                                onPress={() => setReviewsVisible(true)}
+                            >
+                                <Ionicons name="star-outline" size={16} color="#FFF" />
+                                <Text style={styles.reviewsButtonText}>
+                                    Ver reseñas ({restaurant.totalRatings || 0})
+                                </Text>
+                            </Pressable>
+
+                            <ReviewsModal
+                                visible={reviewsVisible}
+                                onClose={() => setReviewsVisible(false)}
+                                reviews={restaurant.ratings}
+                            />
+
                         </View>
 
                         {hasValidCoords ? (
@@ -163,6 +213,18 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0,0,0,0.45)",
         justifyContent: "flex-end",
     },
+
+    reviewsButton: {
+        flexDirection: "row",
+        backgroundColor: "#C4622D",
+        padding: 12,
+        borderRadius: 15,
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 15,
+        gap: 8
+    },
+    reviewsButtonText: { color: "#FFF", fontWeight: "700" },
 
     modal: {
         backgroundColor: "#FAF6F1",

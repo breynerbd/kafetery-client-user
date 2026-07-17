@@ -32,6 +32,26 @@ const RestaurantsScreen = () => {
         setSelectedRestaurant(null);
     };
 
+    const ratingDisplay = (rating, count) => {
+        if (!rating || rating === 0) {
+            return (
+                <View style={styles.rating}>
+                    <Ionicons name="star-outline" size={12} color="#8C6B55" />
+                    <Text style={styles.ratingText}>Sin valoraciones</Text>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.rating}>
+                <Ionicons name="star" size={12} color="#f4b300ff" />
+                <Text style={styles.ratingText}>
+                    {rating.toFixed(1)} {count !== undefined ? `(${count})` : ""}
+                </Text>
+            </View>
+        );
+    };
+
     const renderItem = ({ item }) => (
         <Pressable
             style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -45,6 +65,8 @@ const RestaurantsScreen = () => {
                 <Text style={styles.cardTitle} numberOfLines={1}>
                     {item.name}
                 </Text>
+
+                {ratingDisplay(item.averageRating, item.totalRatings || "Sin valoraciones")}
 
                 <View style={styles.infoItem}>
                     <Ionicons name="call-outline" size={12} color="#8C6B55" />
@@ -62,6 +84,11 @@ const RestaurantsScreen = () => {
                         Ver en Maps
                     </Text>
                 </Pressable>
+
+                <View style={styles.infoItem}>
+                    <Ionicons name="hand-right-outline" size={12} color="#8C6B55" />
+                </View>
+
             </View>
         </Pressable>
     );
@@ -245,5 +272,24 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: "#8C6B55",
         textAlign: "center",
+    },
+    rating: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+    },
+    ratingText: {
+        fontSize: 12,
+        color: "#6F4E37",
+        fontWeight: "500",
+    },
+    ratingCount: {
+        fontSize: 12,
+        color: "#6F4E37",
+    },
+    descriptionText: {
+        fontSize: 12,
+        color: "#6F4E37",
+        lineHeight: 16,
     },
 });
